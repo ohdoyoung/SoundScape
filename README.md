@@ -27,9 +27,9 @@ Soundscape는 음악과 감정을 기록하는 iOS 앱입니다. 사용자는 �
 	•	DB: Core Data
 	•	디자인: Apple Music 스타일의 미니멀 UI
 
+
 #### 스크린샷
-<img src = "https://github.com/user-attachments/assets/2689f227-52f2-49d8-8f19-d46ab6473ec3" width = 400">
-
-<img src = "https://github.com/user-attachments/assets/af098fa4-7712-43ac-9253-16a9fa5f78a3" width = 400">
-
-<img src = "https://github.com/user-attachments/assets/2b7811bc-8eac-4a02-8119-0c2ffaca8231" width = 400">
+![KakaoTalk_Photo_2025-03-26-14-21-46 004](https://github.com/user-attachments/assets/3b9f095c-12f9-4fca-8253-6aef4a7fb7b8)
+![KakaoTalk_Photo_2025-03-26-14-21-46 003](https://github.com/user-attachments/assets/dfb4cc72-c95b-4fb0-9d42-a7144ef8a7f1)
+![KakaoTalk_Photo_2025-03-26-14-21-46 001](https://github.com/user-attachments/assets/5e4664dd-541d-4358-b519-b092db5f2c0e)
+![KakaoTalk_Photo_2025-03-26-14-21-46 002](https://github.com/user-attachments/assets/941f823a-56e6-4ba1-ad57-2955e60508cc)
