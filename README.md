@@ -5,12 +5,12 @@ Soundscape는 음악과 감정을 기록하는 iOS 앱입니다. 사용자는 �
 ### 📌 주요 기능
 
 #### 🎼 앨범 검색 및 상세 정보 보기
-	•	Spotify API를 활용한 빠르고 정확한 앨범 검색
+	•	AppleMusic API를 활용한 빠르고 정확한 앨범 검색
 	•	앨범의 상세 정보(아티스트, 트랙 리스트, 커버 이미지) 조회
 
 #### ✍️ 음악 일기 작성
 	•	하루의 감정을 이모지로 선택하여 기록
-	•	감정에 맞는 음악을 Spotify에서 추천
+	•	감정에 맞는 음악을 AppleMusic에서 추천
 	•	날짜별 음악 다이어리 조회 가능
 
 #### 📅 캘린더 연동
@@ -23,9 +23,8 @@ Soundscape는 음악과 감정을 기록하는 iOS 앱입니다. 사용자는 �
 
 #### ⚙️ 기술 스택
 	•	iOS: SwiftUI
-	•	백엔드: Spring Boot, JPA, MySQL
-	•	API: Spotify API
-	•	인증: JWT 기반 사용자 인증
+	•	API: AppleMusic API
+	•	DB: Core Data
 	•	디자인: Apple Music 스타일의 미니멀 UI
 
 #### 스크린샷
