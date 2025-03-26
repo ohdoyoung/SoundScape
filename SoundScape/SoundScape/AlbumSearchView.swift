@@ -35,16 +35,17 @@ struct AlbumSearchView: View {
             Image(systemName: "magnifyingglass")
                 .foregroundColor(.gray)
             TextField("앨범/노래 검색", text: $searchText, onCommit: {
-                viewModel.search(query: searchText)
+                print("🔍 검색 시작: \(searchText)")
+                Task {
+                    await viewModel.search(query: searchText)
+                }
             })
             .textFieldStyle(PlainTextFieldStyle())
             .padding(10)
             .background(Color.white)
             .cornerRadius(8)
             .shadow(radius: 5)
-            .onTapGesture {
-                UIApplication.shared.endEditing()
-            }
+
         }
         .padding(.horizontal)
         .padding(.top, 20)
@@ -113,7 +114,7 @@ struct AlbumSearchView: View {
     // ✅ 앨범 UI 요소 분리
     private func albumRow(_ album: Album) -> some View {
         HStack(spacing: 15) {
-            albumImage(url: album.firstImageURL)
+            albumImage(url: album.imageURL)
                 .frame(width: 100, height: 100)
                 .cornerRadius(12)
 
@@ -124,7 +125,7 @@ struct AlbumSearchView: View {
                     .foregroundColor(.primary)
                     .lineLimit(1)
 
-                Text(album.artistNames)
+                Text(album.artistName)
                     .font(.subheadline)
                     .foregroundColor(.gray)
                     .lineLimit(1)

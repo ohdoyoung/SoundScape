@@ -248,7 +248,7 @@ public class SpotifyController {
                 albumInfo.put("image_url", null);
             }
 
-            // ✅ 아티스트 정보 저장 (이름 리스트로 변환)
+            // ✅ 아티스트 정보 저장 (이름 리스트로 변환)o
             JsonNode artistsNode = jsonResponse.get("artists");
             List<String> artistNames = new ArrayList<>();
             if (artistsNode != null && artistsNode.isArray()) {
@@ -258,7 +258,7 @@ public class SpotifyController {
             }
             albumInfo.put("artists", artistNames);
 
-            // ✅ 트랙 정보 정리
+            // ✅ 트랙 정보 
             JsonNode tracksNode = jsonResponse.get("tracks").get("items");
             List<Map<String, Object>> trackList = new ArrayList<>();
             if (tracksNode != null && tracksNode.isArray()) {

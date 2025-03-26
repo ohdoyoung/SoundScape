@@ -31,7 +31,8 @@ struct TabbarView: View {
             // ✅ 탭 바를 최하단에 고정
             tabBar
         }
-        .ignoresSafeArea(edges: .bottom) // ✅ 아이폰 하단 부분까지 확장
+        .ignoresSafeArea(edges: .bottom)
+        .onAppear(perform: UIApplication.shared.addTapGestureRecognizer) // ✅ 아이폰 하단 부분까지 확장
     }
     
     var tabBar: some View {

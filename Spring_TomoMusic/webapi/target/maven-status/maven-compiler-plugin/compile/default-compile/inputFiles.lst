@@ -1,9 +1,12 @@
 /Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/Service/DiaryService.java
 /Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/Service/SpotifyService.java
 /Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/Service/UserService.java
+/Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/SpringBootServletInitializer.java
 /Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/WebapiApplication.java
 /Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/config/CorsConfig.java
+/Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/config/SecurityConfig.java
 /Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/controller/DiaryController.java
+/Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/controller/MusicRecommendationController.java
 /Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/controller/SpotifyAuthController.java
 /Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/controller/SpotifyController.java
 /Users/ohdoyoung/Documents/CODING/TomoMusic/Spring_TomoMusic/webapi/src/main/java/com/tomomusic/webapi/controller/UserController.java

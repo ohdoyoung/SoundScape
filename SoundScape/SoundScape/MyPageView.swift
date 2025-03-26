@@ -1,10 +1,12 @@
 import SwiftUI
+import MusicKit
+import CoreData
 
 struct MyPageView: View {
     @State private var diaryEntries: [MusicDiaryEntry] = []
     @State private var albumData: [Int: AlbumInfo] = [:]
     @State private var trackData: [Int: TrackInfo] = [:]
-    @State private var myInfo: MyInfo?
+    
     @State private var albumsByMonth: [String: [AlbumInfo]] = [:]
     @State private var tracksByMonth: [String: [TrackInfo]] = [:]
     @State private var customMonthTitles: [String: String] = [:]
@@ -12,7 +14,7 @@ struct MyPageView: View {
     @State private var isHidden: Bool = false // 이미지 숨기기 상태
     @State private var hiddenMonths: [String: Bool] = [:] // 월별 숨김 여부 관리
     
-    let userId = UserInfo.shared.loginId
+//    let userId = UserInfo.shared.loginId
     
     var body: some View {
         VStack {
@@ -24,25 +26,19 @@ struct MyPageView: View {
         .padding()
         .background(Color.white) // 배경 색상 설정 (밝은 배경)
         .onAppear {
-            fetchUserInfo()
             fetchDiaryEntries()
         }
     }
     
     private var greetingMessage: some View {
-        Group {
-            if let nickname = myInfo?.nickname {
-                HStack {
-                    Text("반가워요, \(nickname)님! 🌟")
-                        .font(.title3)
-                        .fontWeight(.semibold)
-                        .foregroundColor(.primary) // 텍스트 색상
-                        .padding(.top, 10)
-                        .transition(.opacity)
-                    Spacer()
-                }
-                .animation(.easeIn(duration: 0.5), value: myInfo != nil)
-            }
+        HStack {
+            Text("반가워요, 사용자님! 🌟")
+                .font(.title3)
+                .fontWeight(.semibold)
+                .foregroundColor(.primary)
+                .padding(.top, 10)
+                .transition(.opacity)
+            Spacer()
         }
     }
     
@@ -126,7 +122,6 @@ struct MyPageView: View {
     }
     
     private func albumViews(for month: String) -> some View {
-        
         ForEach(albumsByMonth[month] ?? [], id: \.id) { album in
             albumView(for: album)
                 .id(UUID())  // 고유한 ID
@@ -206,57 +201,51 @@ struct MyPageView: View {
     }
     
     private func fetchDiaryEntries() {
-//                guard let url = URL(string: "http://192.168.219.151:8085/api/entries?loginId=\(userId)") else { return }
-        guard let url = URL(string: "http://localhost:8085/api/entries?loginId=\(userId)") else { return }
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {
-                logResponseData(data)
-                parseDiaryEntries(data)
-            }
-        }.resume()
-    }
-    
-    private func logResponseData(_ data: Data) {
-        if let jsonString = String(data: data, encoding: .utf8) {
-            print("📌 서버 응답 JSON: \(jsonString)")
-        }
-    }
-    
-    private func parseDiaryEntries(_ data: Data) {
+        let context = PersistenceController.shared.container.viewContext
+        let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "MusicDiaryEntryEntity")
+
         do {
-            let decodedEntries = try JSONDecoder().decode([MusicDiaryEntry].self, from: data)
+            let entries = try context.fetch(fetchRequest)
             DispatchQueue.main.async {
-                diaryEntries = decodedEntries
-                for entry in decodedEntries {
-                    if let albumId = entry.albumId {
-                        fetchAlbumInfo(for: entry.id, albumId: albumId, createdAt: entry.createdAt)
-                    } else if let trackId = entry.trackId {
-                        fetchTrackInfo(for: entry.id, trackId: trackId, createdAt: entry.createdAt)
+                diaryEntries = entries.compactMap { object in
+                    guard
+                        let content = object.value(forKey: "content") as? String,
+                        let emotions = object.value(forKey: "emotions") as? [String],
+                        let createdAt = object.value(forKey: "createdAt") as? Date
+                    else {
+                        return nil
+                    }
+
+                    let albumId = object.value(forKey: "albumId") as? String
+                    let trackId = object.value(forKey: "trackId") as? String
+
+                    return MusicDiaryEntry(
+                        id: object.objectID.hashValue,
+                        content: content,
+                        emotions: emotions,
+                        albumId: albumId,
+                        trackId: trackId,
+                        createdAt: createdAt
+                    )
+                }
+
+                for object in entries {
+                    let createdAt = object.value(forKey: "createdAt") as? Date ?? Date()
+                    if let albumId = object.value(forKey: "albumId") as? String {
+                        fetchAlbumInfoFromAppleMusic(albumId: albumId, createdAt: createdAt)
+                    } else if let trackId = object.value(forKey: "trackId") as? String {
+                        fetchTrackInfoFromAppleMusic(trackId: trackId, createdAt: createdAt)
                     }
                 }
             }
         } catch {
-            print("디코딩 오류: \(error)")
+            print("❌ Core Data fetch 실패: \(error.localizedDescription)")
         }
     }
-    
-    private func fetchAlbumInfo(for entryId: Int, albumId: String, createdAt: String) {
-//                guard let url = URL(string: "http://192.168.219.151:8085/spotify/album/\(albumId)/detail") else { return }
-        guard let url = URL(string: "http://localhost:8085/spotify/album/\(albumId)/detail") else { return }
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {
-                do {
-                    let decodedData = try JSONDecoder().decode(AlbumInfo.self, from: data)
-                    DispatchQueue.main.async {
-                        albumData[entryId] = decodedData
-                        groupAlbumsByMonth(album: decodedData, createdAt: createdAt)
-                    }
-                } catch {
-                    print("Spring 서버 응답 디코딩 오류: \(error)")
-                }
-            }
-        }.resume()
+    private func formattedDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+        return formatter.string(from: date)
     }
     
     private func groupAlbumsByMonth(album: AlbumInfo, createdAt: String) {
@@ -306,46 +295,38 @@ struct MyPageView: View {
             print("createdAt 값 변환 실패: \(createdAt)")
         }
     }
-    
-    private func fetchUserInfo() {
-//                guard let url = URL(string: "http://192.168.219.151:8085/api/users/\(userId)") else { return }
-        guard let url = URL(string: "http://localhost:8085/api/users/\(userId)") else { return }
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {
-                do {
-                    let decodedData = try JSONDecoder().decode(MyInfo.self, from: data)
-                    DispatchQueue.main.async {
-                        myInfo = decodedData
-                    }
-                } catch {
-                    print("Error decoding data : \(error)")
+
+    private func fetchAlbumInfoFromAppleMusic(albumId: String, createdAt: Date) {
+        Task {
+            do {
+                let request = MusicCatalogResourceRequest<MusicKit.Album>(matching: \.id, equalTo: MusicItemID(albumId))
+                let response = try await request.response()
+                if let album = response.items.first {
+                    let artworkURL = album.artwork?.url(width: 200, height: 200)?.absoluteString
+                    let info = AlbumInfo(id: albumId, name: album.title, imageUrl: artworkURL)
+                    let formatted = formattedDate(createdAt)
+                    groupAlbumsByMonth(album: info, createdAt: formatted)
                 }
+            } catch {
+                print("Apple Music 앨범 정보 불러오기 실패: \(error)")
             }
-        }.resume()
+        }
     }
-    
-    private func fetchTrackInfo(for entryId: Int, trackId: String, createdAt: String) {
-//                guard let url = URL(string: "http://192.168.219.151:8085/spotify/track/\(trackId)") else { return }
-        guard let url = URL(string: "http://localhost:8085/spotify/track/\(trackId)") else { return }
-        
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {
-//                if let jsonString = String(data: data, encoding: .utf8) {
-//                                        print("Server Response: \(jsonString)")
-//                }
-//                
-                do {
-                    let decodedData = try JSONDecoder().decode(TrackInfo.self, from: data)
-                    DispatchQueue.main.async {
-                        trackData[entryId] = decodedData
-                        groupTracksByMonth(track: decodedData, createdAt: createdAt)
-                    }
-                } catch {
-                    print("Error decoding data : \(error)")
+
+    private func fetchTrackInfoFromAppleMusic(trackId: String, createdAt: Date) {
+        Task {
+            do {
+                let request = MusicCatalogResourceRequest<MusicKit.Song>(matching: \.id, equalTo: MusicItemID(trackId))
+                let response = try await request.response()
+                if let track = response.items.first {
+                    let artworkURL = track.artwork?.url(width: 200, height: 200)?.absoluteString
+                    let info = TrackInfo(id: trackId, name: track.title, imageUrl: artworkURL)
+                    let formatted = formattedDate(createdAt)
+                    groupTracksByMonth(track: info, createdAt: formatted)
                 }
+            } catch {
+                print("Apple Music 트랙 정보 불러오기 실패: \(error)")
             }
-        }.resume()
+        }
     }
 }

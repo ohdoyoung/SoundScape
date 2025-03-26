@@ -1,4 +1,34 @@
+private func emotionToText(_ emoji: String) -> String {
+    switch emoji {
+    case "😊", "🙂", "😇": return "Happy"
+    case "😭", "😢", "🥺": return "Sad"
+    case "😡", "🤬": return "Angry"
+    case "🥰", "❤️": return "Love"
+    case "😴": return "Sleep"
+    case "🎉", "🥳": return "Celebration"
+    case "🌧": return "Rainy"
+    case "🌙": return "Night"
+    case "🔥": return "Energetic"
+    case "💤": return "Relax"
+    case "🤩", "😎": return "Cool"
+    case "😱": return "Surprised"
+    case "😷": return "Sick"
+    case "😳": return "Shy"
+    case "💪": return "Strong"
+    case "😂": return "Funny"
+    case "🥶": return "Cold"
+    case "🤪": return "Crazy"
+    case "🤔": return "Think"
+    case "🤯": return "Mindblown"
+    case "😜": return "Playful"
+    case "😈": return "Devilish"
+    case "💀": return "Dark"
+    default: return "Mood"
+    }
+}
 import SwiftUI
+import CoreData
+import MusicKit
 
 struct CalendarView: View {
     @State private var selectedDate = Date()
@@ -7,8 +37,14 @@ struct CalendarView: View {
     @State private var trackData: [Int: TrackInfo] = [:]
     @State private var recommendedTracks: [RecommendedTrack] = [] // 추천 트랙
     @State private var visibleTrackId: Int? = nil // 각 일기마다 추천 트랙을 보여줄지 여부를 다르게 설정
+    @State private var albumsByMonth: [String: [AlbumInfo]] = [:]
+    @State private var tracksByMonth: [String: [TrackInfo]] = [:]
+
+    @Environment(\.managedObjectContext) private var viewContext
+
+    // @FetchRequest removed in favor of manual fetch in onAppear
     
-    let userId = UserInfo.shared.loginId
+//    let userId = UserInfo.shared.loginId
     
     var body: some View {
         VStack {
@@ -25,13 +61,15 @@ struct CalendarView: View {
                     VStack(alignment: .leading, spacing: 12) {
                         diaryEntryView(entry)
                         
-                        // 추천 트랙 보기 버튼
+                       // 추천 트랙 기 버튼
                         Button(action: {
                             if visibleTrackId == entry.id {
-                                visibleTrackId = nil // 같은 일기의 트랙을 클릭하면 숨김
+                                visibleTrackId = nil
                             } else {
                                 visibleTrackId = entry.id
-                                fetchRecommendedTracks(for: entry.emotions ?? [])
+                                Task {
+                                    await recommendTracks(for: entry.emotions)
+                                }
                             }
                         }) {
                             Text(visibleTrackId == entry.id ? "추천 트랙 숨기기" : "추천 트랙 보기")
@@ -56,41 +94,86 @@ struct CalendarView: View {
             .listStyle(PlainListStyle())
         }
         .onAppear {
-            fetchDiaryEntries()
+            let fetchRequest = NSFetchRequest<NSManagedObject>(entityName: "MusicDiaryEntryEntity")
+            do {
+                let entries = try viewContext.fetch(fetchRequest)
+                diaryEntries = entries.compactMap { object in
+                    guard
+                        let content = object.value(forKey: "content") as? String,
+                        let emotions = object.value(forKey: "emotions") as? [String],
+                        let createdAt = object.value(forKey: "createdAt") as? Date
+                    else {
+                        return nil
+                    }
+                    let albumId = object.value(forKey: "albumId") as? String
+                    let trackId = object.value(forKey: "trackId") as? String
+
+                    if let albumId = albumId {
+                        fetchAlbumInfoFromAppleMusic(albumId: albumId, createdAt: createdAt)
+                    } else if let trackId = trackId {
+                        fetchTrackInfoFromAppleMusic(trackId: trackId, createdAt: createdAt)
+                    }
+
+                    return MusicDiaryEntry(
+                        id: object.objectID.hashValue,
+                        content: content,
+                        emotions: emotions,
+                        albumId: albumId,
+                        trackId: trackId,
+                        createdAt: createdAt
+                    )
+                }
+            } catch {
+                print("❌ Core Data fetch 실패: \(error.localizedDescription)")
+            }
         }
     }
     
+    
     private func diaryEntryView(_ entry: MusicDiaryEntry) -> some View {
         HStack(spacing: 16) {
-            if let album = albumData[entry.id] {
-                loadImage(from: album.imageUrl, size: 60)
-            }
-            if let track = trackData[entry.id] {
-                loadImage(from: track.imageUrl, size: 60)
-            }
-            
-            VStack(alignment: .leading, spacing: 8) {
-                if let album = albumData[entry.id] {
-                    Text(album.name ?? "앨범 이름 없음")
-                        .font(.headline)
-                        .foregroundColor(.primary)
-                        .lineLimit(1)
+            if let albumId = entry.albumId {
+                let calendar = Calendar.current
+                let month = calendar.monthSymbols[calendar.component(.month, from: entry.createdAt) - 1]
+                let year = calendar.component(.year, from: entry.createdAt)
+                let monthYear = "\(year)년 \(month)"
+                if let albums = albumsByMonth[monthYear],
+                   let album = albums.first(where: { $0.id == albumId }) {
+                    loadImage(from: album.imageUrl, size: 60)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(album.name ?? "앨범 이름 없음")
+                            .font(.headline)
+                        Text(entry.content)
+                            .font(.body)
+                            .foregroundColor(.gray)
+                            .lineLimit(3)
+                        if !entry.emotions.isEmpty {
+                            emotionTagsView(entry.emotions)
+                        }
+                    }
+                } else {
+                    defaultTextView(entry)
                 }
-                if let track = trackData[entry.id] {
-                    Text(track.name ?? "트랙 이름 없음")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                        .lineLimit(1)
+            } else if let trackId = entry.trackId {
+                let allTracks = tracksByMonth.values.flatMap { $0 }
+                if let track = allTracks.first(where: { $0.id == trackId }) {
+                    loadImage(from: track.imageUrl, size: 60)
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(track.name ?? "트랙 이름 없음")
+                            .font(.headline)
+                        Text(entry.content)
+                            .font(.body)
+                            .foregroundColor(.gray)
+                            .lineLimit(3)
+                        if !entry.emotions.isEmpty {
+                            emotionTagsView(entry.emotions)
+                        }
+                    }
+                } else {
+                    defaultTextView(entry)
                 }
-                
-                Text(entry.content)
-                    .font(.body)
-                    .foregroundColor(.gray)
-                    .lineLimit(3)
-                
-                if let emotions = entry.emotions, !emotions.isEmpty {
-                    emotionTagsView(emotions)
-                }
+            } else {
+                defaultTextView(entry)
             }
             Spacer()
         }
@@ -114,10 +197,41 @@ struct CalendarView: View {
     
     private func filterDiaryEntries() -> [MusicDiaryEntry] {
         return diaryEntries.filter {
-            if let createdDate = stringToDate($0.createdAt) {
-                return formattedDate(selectedDate) == formattedDate(createdDate)
+            Calendar.current.isDate($0.createdAt, inSameDayAs: selectedDate)
+        }
+    }
+    
+    private func fetchAlbumInfoFromAppleMusic(albumId: String, createdAt: Date) {
+        Task {
+            do {
+                let request = MusicCatalogResourceRequest<MusicKit.Album>(matching: \.id, equalTo: MusicItemID(albumId))
+                let response = try await request.response()
+                if let album = response.items.first {
+                    let artworkURL = album.artwork?.url(width: 200, height: 200)?.absoluteString
+                    let info = AlbumInfo(id: albumId, name: album.title, imageUrl: artworkURL)
+                    let formatted = formattedDate(createdAt)
+                    groupAlbumsByMonth(album: info, createdAt: formatted)
+                }
+            } catch {
+                print("Apple Music 앨범 정보 불러오기 실패: \(error)")
             }
-            return false
+        }
+    }
+
+    private func fetchTrackInfoFromAppleMusic(trackId: String, createdAt: Date) {
+        Task {
+            do {
+                let request = MusicCatalogResourceRequest<MusicKit.Song>(matching: \.id, equalTo: MusicItemID(trackId))
+                let response = try await request.response()
+                if let track = response.items.first {
+                    let artworkURL = track.artwork?.url(width: 200, height: 200)?.absoluteString
+                    let info = TrackInfo(id: trackId, name: track.title, imageUrl: artworkURL)
+                    let formatted = formattedDate(createdAt)
+                    groupTracksByMonth(track: info, createdAt: formatted)
+                }
+            } catch {
+                print("Apple Music 트랙 정보 불러오기 실패: \(error)")
+            }
         }
     }
     
@@ -146,7 +260,7 @@ struct CalendarView: View {
     
     private func formattedDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy-MM-dd"
+        formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         return formatter.string(from: date)
     }
     
@@ -156,108 +270,13 @@ struct CalendarView: View {
         return formatter.date(from: string)
     }
     
-    private func fetchDiaryEntries() {
-        guard let url = URL(string: "http://localhost:8085/api/entries?loginId=\(userId)") else { return }
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {
-                parseDiaryEntries(data)
-            }
-        }.resume()
-    }
-    
-    private func parseDiaryEntries(_ data: Data) {
-        do {
-            let decodedEntries = try JSONDecoder().decode([MusicDiaryEntry].self, from: data)
-            DispatchQueue.main.async {
-                diaryEntries = decodedEntries
-                for entry in decodedEntries {
-                    if let albumId = entry.albumId {
-                        fetchAlbumInfo(for: entry.id, albumId: albumId)
-                    }
-                    if let trackId = entry.trackId {
-                        fetchTrackInfo(for: entry.id, trackId: trackId)
-                    }
-                }
-            }
-        } catch {
-            print("디코딩 오류: \(error)")
-        }
-    }
-    
-    private func fetchAlbumInfo(for entryId: Int, albumId: String) {
-        guard let url = URL(string: "http://localhost:8085/spotify/album/\(albumId)/detail") else { return }
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {
-                do {
-                    let decodedData = try JSONDecoder().decode(AlbumInfo.self, from: data)
-                    DispatchQueue.main.async {
-                        albumData[entryId] = decodedData
-                    }
-                } catch {
-                    print("Spring 서버 응답 디코딩 오류: \(error)")
-                }
-            }
-        }.resume()
-    }
-    
-    private func fetchTrackInfo(for entryId: Int, trackId: String) {
-        guard let url = URL(string: "http://localhost:8085/spotify/track/\(trackId)") else { return }
-        
-        URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data {
-                do {
-                    let decodedData = try JSONDecoder().decode(TrackInfo.self, from: data)
-                    DispatchQueue.main.async {
-                        trackData[entryId] = decodedData
-                    }
-                } catch {
-                    print("디코딩 오류: \(error)")
-                }
-            }
-        }.resume()
-    }
-    
-    private func fetchRecommendedTracks(for emotions: [String]) {
-        let emotionQuery = emotions.joined(separator: ",") // 이모지를 쉼표로 구분하여 하나의 문자열로 만듬
-        
-        guard let url = URL(string: "http://localhost:8085/spotify/searchByEmotion?emotions=\(emotionQuery)") else { return }
-        
-        let task = URLSession.shared.dataTask(with: url) { data, response, error in
-            if let data = data, let responseString = String(data: data, encoding: .utf8) {
-                print("Server response: \(responseString)")
-            }
-            guard let data = data, error == nil else {
-                print("Network request failed: \(String(describing: error))")
-                return
-            }
-            
-            do {
-                // JSONDecoder로 응답 데이터 디코딩
-                let decoder = JSONDecoder()
-                let recommendationResponse = try decoder.decode(RecommendationResponse.self, from: data)
-                
-                // 디코딩된 트랙 데이터를 recommendedTracks 배열에 저장
-                DispatchQueue.main.async {
-                    self.recommendedTracks = recommendationResponse.tracks.items
-                }
-                
-            } catch {
-                print("Error decoding response: \(error)")
-            }
-        }
-        
-        task.resume()
-    }
-    
     private var recommendedTracksList: some View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 16) {
                 ForEach(recommendedTracks, id: \.id) { track in
                     VStack {
                         // 앨범 커버
-                        AsyncImage(url: URL(string: track.album.images.first?.url ?? "")) { phase in
+                        AsyncImage(url: URL(string: track.imageUrl)) { phase in
                             switch phase {
                             case .empty:
                                 ProgressView()
@@ -284,7 +303,7 @@ struct CalendarView: View {
                             .lineLimit(1)
                             .foregroundColor(.primary)
                         // 아티스트
-                        Text(track.artists.first?.name ?? "Unknown Artist")
+                        Text(track.artistName)
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                             .lineLimit(1)
@@ -293,6 +312,91 @@ struct CalendarView: View {
                 }
             }
             .padding(.horizontal)
+        }
+    }
+    
+    private func recommendTracks(for emotions: [String]) async {
+        var collectedTracks: [RecommendedTrack] = []
+
+    for emotion in emotions {
+        let keyword = emotionToText(emotion) + " music"
+        let request = MusicCatalogSearchRequest(term: keyword, types: [MusicKit.Song.self])
+        do {
+            let response = try await request.response()
+            let songs = (response.songs ?? []).prefix(3)
+
+            for song in songs {
+                let track = RecommendedTrack(
+                    id: song.id.rawValue,
+                    name: song.title,
+                    artistName: song.artistName,
+                    imageUrl: song.artwork?.url(width: 300, height: 300)?.absoluteString ?? ""
+                )
+                collectedTracks.append(track)
+            }
+        } catch {
+            print("❌ 추천 트랙 검색 실패: \(error.localizedDescription)")
+        }
+    }
+
+        DispatchQueue.main.async {
+            self.recommendedTracks = collectedTracks
+        }
+    }
+
+    private func groupAlbumsByMonth(album: AlbumInfo, createdAt: String) {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+
+        if let date = dateFormatter.date(from: createdAt) {
+            let calendar = Calendar.current
+            let month = calendar.monthSymbols[calendar.component(.month, from: date) - 1]
+            let year = calendar.component(.year, from: date)
+            let monthYear = "\(year)년 \(month)"
+
+            DispatchQueue.main.async {
+                var existingAlbums = albumsByMonth[monthYear] ?? []
+                if !existingAlbums.contains(where: { $0.id == album.id }) {
+                    existingAlbums.append(album)
+                    albumsByMonth[monthYear] = existingAlbums
+                }
+            }
+        } else {
+            print("createdAt 값 변환 실패: \(createdAt)")
+        }
+    }
+
+    private func groupTracksByMonth(track: TrackInfo, createdAt: String) {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
+
+        if let date = dateFormatter.date(from: createdAt) {
+            let calendar = Calendar.current
+            let month = calendar.monthSymbols[calendar.component(.month, from: date) - 1]
+            let year = calendar.component(.year, from: date)
+            let monthYear = "\(year)년 \(month)"
+
+            DispatchQueue.main.async {
+                var existingTracks = tracksByMonth[monthYear] ?? []
+                if !existingTracks.contains(where: { $0.id == track.id }) {
+                    existingTracks.append(track)
+                    tracksByMonth[monthYear] = existingTracks
+                }
+            }
+        } else {
+            print("createdAt 값 변환 실패: \(createdAt)")
+        }
+    }
+
+    private func defaultTextView(_ entry: MusicDiaryEntry) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(entry.content)
+                .font(.body)
+                .foregroundColor(.gray)
+                .lineLimit(3)
+            if !entry.emotions.isEmpty {
+                emotionTagsView(entry.emotions)
+            }
         }
     }
 }

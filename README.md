@@ -28,10 +28,6 @@ Soundscape는 음악과 감정을 기록하는 iOS 앱입니다. 사용자는 �
 	•	인증: JWT 기반 사용자 인증
 	•	디자인: Apple Music 스타일의 미니멀 UI
 
-<<<<<<< HEAD
-=======
-
->>>>>>> cbbdb48 (update read)
 #### 스크린샷
 <img src = "https://github.com/user-attachments/assets/61ca8a5a-9090-4cef-8334-e1901baf80f2" width = 400">
 <img src = "https://github.com/user-attachments/assets/40cb5f10-48d2-43bd-89f7-aaa919df36b5" width = 400">

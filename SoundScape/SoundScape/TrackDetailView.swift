@@ -19,7 +19,6 @@ struct TrackDetailView: View {
                 }
                 .padding()
                 
-                
                 Text(track.name)
                     .font(.title2)
                     .bold()
@@ -29,7 +28,7 @@ struct TrackDetailView: View {
                     .font(.headline)
                     .foregroundColor(.gray)
                 
-                Text("앨범: \(track.albumName)")
+                Text("출처: Apple Music")
                     .font(.subheadline)
                     .foregroundColor(.gray)
                 

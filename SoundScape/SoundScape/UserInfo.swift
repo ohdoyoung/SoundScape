@@ -1,15 +1,15 @@
+////
+////  UserInfo.swift
+////  SoundScape
+////
+////  Created by 오도영 on 2/11/25.
+////
 //
-//  UserInfo.swift
-//  SoundScape
+//import SwiftUI
 //
-//  Created by 오도영 on 2/11/25.
+//class UserInfo: ObservableObject {
+//    static let shared = UserInfo()
 //
-
-import SwiftUI
-
-class UserInfo: ObservableObject {
-    static let shared = UserInfo()
-
-    @Published var loginId: String = ""
-    @Published var isLoggedIn: Bool = false
-}
+//    @Published var loginId: String = ""
+//    @Published var isLoggedIn: Bool = false
+//}
