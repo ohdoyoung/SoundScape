@@ -29,5 +29,7 @@ Soundscape는 음악과 감정을 기록하는 iOS 앱입니다. 사용자는 �
 
 #### 스크린샷
 <img src = "https://github.com/user-attachments/assets/2689f227-52f2-49d8-8f19-d46ab6473ec3" width = 400">
+
 <img src = "https://github.com/user-attachments/assets/af098fa4-7712-43ac-9253-16a9fa5f78a3" width = 400">
+
 <img src = "https://github.com/user-attachments/assets/2b7811bc-8eac-4a02-8119-0c2ffaca8231" width = 400">
